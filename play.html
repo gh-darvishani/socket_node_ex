@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>play Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <style>
+        #message {
+            width: 100%;
+            background: rgba(214, 214, 214, 0.08);
+            color: #ff3e5d;
+            font-size: 24px;
+        }
+
+        #game-pad td {
+            width: 100px;
+            height: 100px;
+            text-align: center;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+
+        .o {
+            background: url("image/o.png") no-repeat;
+            background-size: contain;
+        }
+
+        .x {
+
+            background: url("image/x.png") no-repeat;
+            background-size: contain;
+        }
+    </style>
+</head>
+<body>
+
+<div id="message"></div>
+
+<div id="game-pad">
+    <table>
+        <tr>
+            <td position="1"></td>
+            <td position="2"></td>
+            <td position="3"></td>
+        </tr>
+        <tr>
+            <td position="4"></td>
+            <td position="5"></td>
+            <td position="6"></td>
+        </tr>
+        <tr>
+            <td position="7"></td>
+            <td position="8"></td>
+            <td position="9"></td>
+        </tr>
+    </table>
+</div>
+
+<script>
+
+    (function ($) {
+
+        var Game = {
+            init: function (conf) {
+                this.config = conf;
+
+                this.config.position_list = [
+                    false, false, false,
+                    false, false, false,
+                    false, false, false
+                ];
+                this.config.click_count = 0;
+            },
+            canClick: true,
+
+            start: function () {
+                this.showMessage("welcome : " + this.config.username, 5000);
+                var socket = io.connect('http://198.50.152.97:2525');
+                socket.on('connect', function () {
+                    console.log('Client has connected to the server!');
+                });
+                this.config.socket = socket;
+                this.onReceive();
+
+                this.config.gamepad_td_selector.on("click", this.btn_click_callback);
+            }
+            ,
+            sendData: function (data) {
+                var data_send = {
+                    data: data,
+                    user: this.config.username
+                };
+                this.config.socket.emit('game_play', data_send);
+            },
+
+            onReceive: function () {
+                var self = Game;
+                this.config.socket.on('game_play', function (msg) {
+                    self.config.click_count++;
+                    self.showMessage(msg.user + " click " + msg.data.position + "\n click count :" + self.config.click_count, 1000);
+                    if (msg.user !== self.config.username) {
+                        self.canClick = true;
+                        self.config.gamepad_selector.find("td[position=" + msg.data.position + "]").addClass("o");
+                    } else {
+                        self.config.gamepad_selector.find("td[position=" + msg.data.position + "]").addClass("x");
+
+                    }
+
+//                    console.log(self.checkWin());
+                    if (self.checkWin()) {
+                        alert("you win !")
+                    }
+
+
+                });
+            },
+            btn_click_callback: function (e) {
+
+                var self = Game;
+
+                var item_already_clicked = $(this).is(".o , .x");
+                if (item_already_clicked) {
+                    self.showMessage("you can not click this item");
+                    return;
+                }
+//                console.log(item_already_clicked);
+                if (!self.canClick) {
+                    self.showMessage("you can not click now ...wait");
+                    return;
+                }
+                var position = $(this).attr("position");
+
+                self.setPosition(position);
+                self.sendData({
+                    action: "join",
+                    position: position,
+                    message: "i am joined"
+                });
+                self.canClick = false;
+            }
+            ,
+            showMessage: function (message, time=2000) {
+                var e = this.config.message_selector;
+                e.text(message);
+                e.show();
+                setTimeout(function () {
+                    e.hide(200);
+                }, time);
+
+            },
+            setPosition: function (position) {
+                this.config.position_list[position - 1] = true;
+//                console.log(this.config.position_list);
+            },
+            checkWin: function () {
+
+                if (this.isTrue([1, 5, 9])) {
+                    return true;
+                }
+                if (this.isTrue([7, 5, 3])) {
+                    return true
+                }
+                if (this.isTrue([1, 2, 3])) {
+                    return true
+                }
+                if (this.isTrue([4, 5, 6])) {
+                    return true
+                }
+                if (this.isTrue([7, 8, 9])) {
+                    return true
+                }
+                if (this.isTrue([1, 4, 7])) {
+                    return true
+                }
+                if (this.isTrue([2, 5, 8])) {
+                    return true
+                }
+                if (this.isTrue([3, 6, 9])) {
+                    return true
+                }
+                return false;
+            },
+            isTrue: function (checker) {
+                var result = true;
+                for (var i = 0; i < 3; i++) {
+
+                    if (!this.config.position_list[checker[i] - 1]) {
+                        result = false;
+                    }
+                }
+                return result;
+            }
+        };
+
+
+        Game.init(
+            {
+                message_selector: $('#message'),
+                button_selector: $('#btn'),
+                gamepad_selector: $('#game-pad'),
+                gamepad_td_selector: $('#game-pad').find('td'),
+                username: prompt("who are you !")
+
+            }
+        );
+        Game.start();
+
+
+    })($);
+
+</script>
+</body>
+</html>
