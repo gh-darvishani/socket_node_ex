@@ -76,7 +76,7 @@
 
             start: function () {
                 this.showMessage("welcome : " + this.config.username, 5000);
-                var socket = io.connect('http://198.50.152.97:2525');
+                var socket = io.connect('http://127.0.0.1:2525');
                 socket.on('connect', function () {
                     console.log('Client has connected to the server!');
                 });
